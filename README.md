@@ -1,0 +1,136 @@
+# PyAuthenticator
+
+A modern, lightweight, **local-first** desktop TOTP authenticator built with
+PySide6. Drag & drop QR codes, generate RFC 6238 codes, and manage your
+2FA accounts — entirely offline, with encrypted local storage.
+
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+## Features
+
+- 🖱️ **Drag & drop** QR code images straight onto the window (multi-file supported)
+- 📂 **File → Import QR Image** for manual selection
+- 🖼️ Decodes PNG, JPG, JPEG, BMP, and WebP QR images (via `pyzbar`, falling
+  back to OpenCV's `QRCodeDetector` if `libzbar` isn't installed)
+- 🔐 Parses `otpauth://` URIs — issuer, account, secret, algorithm, digits, period
+- ⏱️ RFC 6238-compliant TOTP generation (`pyotp`), auto-refreshing every second
+  with a live countdown progress bar
+- 🔍 Search/filter accounts, alphabetical sorting
+- 🌗 Dark mode / light mode
+- 🗂️ System tray support — hides to tray instead of quitting
+- 📋 Click any card to copy its current code
+- 🖱️ Right-click a card for **Copy code / Rename / Delete / Show secret / Export**
+- 💾 Encrypted local storage — secrets are never stored in plaintext
+- 📦 Encrypted, password-protected backup import/export
+- 🚫 **No network calls, no telemetry, no analytics.** Everything runs locally.
+
+## Screenshots layout
+
+```
+--------------------------------------
+PyAuthenticator
++ Add QR   + Import Image
+Accounts
+--------------------------------------
+GitHub
+default@example.com
+123 456
+██████████░░░░░░
+18 seconds
+--------------------------------------
+Google
+me@gmail.com
+482 193
+█████░░░░░░░░░░░
+9 seconds
+--------------------------------------
+```
+
+## Installation
+
+```bash
+git clone https://github.com/yourname/pyauthenticator.git
+cd pyauthenticator
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+pip install -e .
+```
+
+### System dependency: `libzbar`
+
+`pyzbar` needs the native `zbar` library. If it's not present, PyAuthenticator
+automatically falls back to OpenCV's built-in QR detector, so the app still
+works — but installing `zbar` gives more reliable multi-QR and skewed-image
+decoding:
+
+- **Debian/Ubuntu:** `sudo apt install libzbar0`
+- **macOS:** `brew install zbar`
+- **Windows:** the `pyzbar` wheel bundles the DLL — no extra step needed.
+
+## Running
+
+```bash
+python -m pyauthenticator
+# or, after `pip install -e .`:
+pyauthenticator
+```
+
+## How secrets are protected
+
+1. On first run, PyAuthenticator generates a random local encryption key.
+2. That key is stored in your **OS credential manager** via `keyring`
+   (Windows Credential Locker, macOS Keychain, or the Linux Secret
+   Service/KWallet).
+3. If no OS credential manager is available (e.g. headless Linux), the key
+   falls back to a file at `~/.config/pyauthenticator/local.key` with `0600`
+   permissions.
+4. All account data (`~/.local/share/pyauthenticator/accounts.enc`) is
+   encrypted at rest with this key using `Fernet` (AES-128-CBC + HMAC) from
+   the `cryptography` library. **Generated codes are never stored — only the
+   parameters needed to compute them.**
+5. Backup files (`.pyauth`) use a *separate*, password-derived key (PBKDF2 +
+   Fernet) so they can be safely moved to another machine.
+
+## Project structure
+
+```
+pyauthenticator/
+├── src/pyauthenticator/
+│   ├── app.py       # application bootstrap / wiring
+│   ├── gui.py        # PySide6 UI (MainWindow, AccountCard)
+│   ├── qr.py          # QR decoding + otpauth:// URI parsing
+│   ├── storage.py    # encrypted local persistence
+│   ├── totp.py        # RFC 6238 TOTP generation (pure logic)
+│   ├── crypto.py      # OS keyring + local/password-based encryption
+│   ├── tray.py         # system tray icon
+│   ├── __main__.py
+│   └── __init__.py
+├── examples/
+├── tests/
+├── README.md
+├── LICENSE
+├── pyproject.toml
+└── requirements.txt
+```
+
+Logic (`totp.py`, `qr.py`, `storage.py`, `crypto.py`) is fully decoupled from
+the GUI, so it can be unit-tested without a display server and reused in
+other frontends (CLI, web, etc.).
+
+## Testing
+
+```bash
+pip install -e ".[dev]"
+pytest --cov=pyauthenticator
+```
+
+## Contributing
+
+Issues and pull requests are welcome. Please run `ruff check` and `pytest`
+before submitting.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

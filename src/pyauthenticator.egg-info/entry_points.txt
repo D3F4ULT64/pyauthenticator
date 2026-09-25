@@ -1,0 +1,2 @@
+[console_scripts]
+pyauthenticator = pyauthenticator.app:main
